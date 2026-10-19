@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Shadow Fight 2 - Arena Amanda & Stefany</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Rajdhani:wght@600;700&display=swap');
+
+        body {
+            background-color: #050508;
+            color: #fff;
+            font-family: 'Rajdhani', sans-serif;
+            overflow: hidden;
+            user-select: none;
+            touch-action: none;
+        }
+
+        .font-cinzel {
+            font-family: 'Cinzel', serif;
+        }
+
+        canvas {
+            display: block;
+            box-shadow: 0 0 50px rgba(0, 0, 0, 0.9);
+            touch-action: none;
+        }
+
+        .glass-panel {
+            background: rgba(12, 10, 20, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 215, 0, 0.2);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8);
+        }
+
+        .glow-title {
+            text-shadow: 0 0 15px rgba(255, 215, 0, 0.6), 0 0 30px rgba(255, 68, 0, 0.4);
+        }
+
+        /* Touch Controls Styling */
+        .touch-btn {
+            background: rgba(255, 255, 255, 0.12);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+            user-select: none;
+            touch-action: manipulation;
+        }
+        .touch-btn:active {
+            background: rgba(255, 215, 0, 0.4);
+            border-color: #ffd700;
+            transform: scale(0.95);
+        }
+    </style>
+</head>
+<body class="w-screen h-screen flex flex-col items-center justify-center relative bg-black">
+
+    <!-- UI Overlay for Game -->
+    <div id="game-ui" class="absolute inset-0 pointer-events-none flex flex-col justify-between p-4 z-10 hidden">
+        <!-- Top Health Bars Header -->
+        <div class="flex justify-between items-start w-full max-w-5xl mx-auto pt-2">
+            <!-- Player 1 Status -->
+            <div class="w-2/5 flex flex-col items-start gap-1">
+                <div class="flex items-center gap-2">
+                    <span id="p1-name" class="font-cinzel font-bold text-xl text-amber-400 tracking-wider">SOMBRA</span>
+                    <span class="text-xs bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded border border-amber-500/40">P1</span>
+                </div>
+                <!-- Health Bar P1 -->
+                <div class="w-full h-6 bg-gray-900/90 rounded-r-lg border-2 border-amber-500/60 overflow-hidden relative shadow-inner">
+                    <div id="p1-health" class="h-full bg-gradient-to-r from-red-600 via-amber-500 to-green-500 transition-all duration-100 w-full"></div>
+                    <div id="p1-health-val" class="absolute inset-0 flex items-center justify-center text-xs font-bold text-white drop-shadow">100 / 100</div>
+                </div>
+                <!-- Energy/Shadow Bar P1 -->
+                <div class="w-3/4 h-2.5 bg-gray-900/90 rounded-r-md border border-cyan-500/40 overflow-hidden relative">
+                    <div id="p1-energy" class="h-full bg-gradient-to-r from-cyan-600 to-blue-400 transition-all duration-150 w-full"></div>
+                </div>
+            </div>
+
+            <!-- Round Timer & VS -->
+            <div class="flex flex-col items-center -mt-2">
+                <div id="timer" class="font-cinzel text-4xl font-extrabold text-amber-400 bg-black/80 px-4 py-1 rounded-b-xl border-b-2 border-x-2 border-amber-500/50 shadow-lg">99</div>
+                <span class="text-xs font-bold text-amber-500/80 tracking-widest mt-1">ROUND 1</span>
+            </div>
+
+            <!-- Player 2 Status -->
+            <div class="w-2/5 flex flex-col items-end gap-1">
+                <div class="flex items-center gap-2">
+                    <span class="text-xs bg-red-500/20 text-red-300 px-2 py-0.5 rounded border border-red-500/40" id="p2-type-tag">CPU</span>
+                    <span id="p2-name" class="font-cinzel font-bold text-xl text-red-400 tracking-wider">LYNX</span>
+                </div>
+                <!-- Health Bar P2 -->
+                <div class="w-full h-6 bg-gray-900/90 rounded-l-lg border-2 border-red-500/60 overflow-hidden relative shadow-inner">
+                    <div id="p2-health" class="h-full bg-gradient-to-l from-red-600 via-amber-500 to-green-500 transition-all duration-100 w-full float-right"></div>
+                    <div id="p2-health-val" class="absolute inset-0 flex items-center justify-center text-xs font-bold text-white drop-shadow">100 / 100</div>
+                </div>
+                <!-- Energy/Shadow Bar P2 -->
+                <div class="w-3/4 h-2.5 bg-gray-900/90 rounded-l-md border border-purple-500/40 overflow-hidden relative">
+                    <div id="p2-energy" class="h-full bg-gradient-to-l from-purple-600 to-pink-500 transition-all duration-150 w-full float-right"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Center Announcer Text -->
+        <div id="announcer" class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none transition-all duration-300 transform scale-0 opacity-0">
+            <h1 id="announcer-text" class="font-cinzel text-6xl md:text-8xl font-black text-amber-400 glow-title tracking-widest text-center uppercase">FIGHT!</h1>
+            <p id="announcer-subtext" class="text-xl text-amber-200 mt-2 font-semibold"></p>
+        </div>
+
+        <!-- Dedicated Credits Footer Banner -->
+        <div class="w-full text-center py-1">
+            <span class="text-xs font-cinzel text-amber-400/80 bg-black/60 px-4 py-1 rounded-full border border-amber-500/30">
+                Criado para <strong class="text-amber-300">Amanda Gabrielly Campos Araújo Silva</strong> & <strong class="text-amber-300">Stefany Fernandes Mello</strong>
+            </span>
+        </div>
+    </div>
+
+    <!-- On-screen Touch Controls (Mobile Only) -->
+    <div id="touch-controls" class="absolute inset-0 pointer-events-none z-20 flex justify-between items-end p-4 hidden">
+        <!-- D-Pad Left -->
+        <div class="pointer-events-auto grid grid-cols-3 gap-2 w-36 h-36">
+            <div></div>
+            <button id="btn-up" class="touch-btn text-lg">▲</button>
+            <div></div>
+            <button id="btn-left" class="touch-btn text-lg">◄</button>
+            <button id="btn-down" class="touch-btn text-lg">▼</button>
+            <button id="btn-right" class="touch-btn text-lg">►</button>
+        </div>
+
+        <!-- Action Buttons Right -->
+        <div class="pointer-events-auto grid grid-cols-2 gap-3 w-40 h-40">
+            <button id="btn-punch" class="touch-btn bg-amber-600/40 border-amber-400">Soco</button>
+            <button id="btn-kick" class="touch-btn bg-orange-600/40 border-orange-400">Chute</button>
+            <button id="btn-skill" class="touch-btn bg-emerald-600/40 border-emerald-400 text-xs">Habilidade</button>
+            <button id="btn-magic" class="touch-btn bg-purple-600/40 border-purple-400 text-xs">Magia</button>
+        </div>
+    </div>
+
+    <!-- Main Menu Screen -->
+    <div id="menu-screen" class="absolute inset-0 z-30 flex flex-col items-center justify-between p-6 bg-gradient-to-b from-black via-slate-950 to-black">
+        <!-- Header -->
+        <div class="text-center mt-4">
+            <div class="inline-block border-b-2 border-amber-500 pb-1 mb-2">
+                <span class="text-xs uppercase tracking-widest text-amber-400/90 font-bold">Edição Especial de Aniversário e Homenagem</span>
+            </div>
+            <h1 class="font-cinzel text-4xl md:text-6xl font-black text-amber-400 glow-title tracking-wider">SHADOW FIGHT 2</h1>
+            <p class="text-lg text-amber-200/80 font-cinzel tracking-widest mt-1">DUELO X1 DE CAMPEÕES</p>
+            <p class="text-xs text-gray-400 mt-2">Dedicado a: <span class="text-amber-300 font-bold">Amanda Gabrielly Campos Araújo Silva</span> & <span class="text-amber-300 font-bold">Stefany Fernandes Mello</span></p>
+        </div>
+
+        <!-- Fighter Selection Grid -->
+        <div class="w-full max-w-4xl glass-panel p-6 rounded-2xl border border-amber-500/30 flex flex-col gap-6">
+            <h2 class="text-center font-cinzel text-xl text-amber-300 tracking-wider">SELEÇÃO DE LUTADORES</h2>
+            
+            <div class="grid grid-cols-2 md:grid-cols-6 gap-3" id="character-grid">
+                <!-- Injected dynamically via JS -->
+            </div>
+
+            <!-- Mode & Rules selection -->
+            <div class="flex flex-wrap justify-around items-center pt-4 border-t border-amber-500/20 gap-4">
+                <div class="flex items-center gap-3">
+                    <span class="text-sm font-bold text-gray-300">MODO DE JOGO:</span>
+                    <button id="mode-pvc" class="px-4 py-2 rounded-lg font-bold text-xs bg-amber-500 text-black shadow-lg shadow-amber-500/20 transition-all">JOGADOR VS CPU</button>
+                    <button id="mode-pvp" class="px-4 py-2 rounded-lg font-bold text-xs bg-gray-800 text-gray-400 hover:text-white transition-all">2 JOGADORES (LOCAL)</button>
+                </div>
+
+                <button id="start-btn" class="px-8 py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-cinzel font-black text-lg rounded-xl shadow-xl shadow-amber-500/30 transform hover:scale-105 transition-all cursor-pointer">
+                    INICIAR BATALHA
+                </button>
+            </div>
+        </div>
+
+        <!-- Controls Guide Footer -->
+        <div class="w-full max-w-4xl text-xs text-gray-400 grid grid-cols-1 md:grid-cols-2 gap-4 bg-black/60 p-3 rounded-xl border border-white/10">
+            <div>
+                <strong class="text-amber-400">Controles P1:</strong> W (Pulo), A/D (Mover), S (Defesa), J (Soco), K (Chute), L (Habilidade/Cura), U (Magia)
+            </div>
+            <div>
+                <strong class="text-red-400">Controles P2:</strong> Setas (Mover/Pulo), Numpad 1 (Soco), 2 (Chute), 3 (Habilidade), 4 (Magia)
+            </div>
+        </div>
+    </div>
+
+    <!-- Canvas Container -->
+    <div id="canvas-container" class="relative w-full h-full flex items-center justify-center overflow-hidden">
+        <canvas id="gameCanvas"></canvas>
+    </div>
+
+    <!-- Game Logic Script -->
+    <script>
+        /**
+         * SHADOW FIGHT 2 - ENGINE DEDICADA
+         * Amanda Gabrielly Campos Araújo Silva & Stefany Fernandes Mello
+         */
+
+        // Audio System via Web Audio API (Synthesizer without external audio assets)
+        class SoundFX {
+            constructor() {
+                this.ctx = null;
+            }
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+            }
+            playHit() {
+                if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(150, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(30, this.ctx.currentTime + 0.15);
+                gain.gain.setValueAtTime(0.5, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.15);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.15);
+            }
+            playMagic() {
+                if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(300, this.ctx.currentTime);
+                osc.frequency.linearRampToValueAtTime(800, this.ctx.currentTime + 0.4);
+                gain.gain.setValueAtTime(0.4, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.4);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.4);
+            }
+            playHeal() {
+                if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(400, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(900, this.ctx.currentTime + 0.3);
+                gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.3);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.3);
+            }
+            playEarthquake() {
+                if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(60, this.ctx.currentTime);
+                osc.frequency.linearRampToValueAtTime(30, this.ctx.currentTime + 0.5);
+                gain.gain.setValueAtTime(0.6, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.5);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.5);
+            }
+        }
+
+        const audio = new SoundFX();
+
+        // Roster Definitions with exact properties from user specification
+        const ROSTER = [
+            {
+                id: 'sombra',
+                name: 'Sombra',
+                weapon: 'Katana Dupla',
+                color: '#00e5ff',
+                healDesc: 'Regeneração Contínua',
+                skillDesc: 'Elementos de Sombra',
+                healType: 'regen',
+                magicType: 'shadow_blast'
+            },
+            {
+                id: 'lynx',
+                name: 'Lynx',
+                weapon: 'Garras de Aço',
+                color: '#ff2a6d',
+                healDesc: 'Roubo de Vida',
+                skillDesc: 'Explosivos & Garras',
+                healType: 'lifesteal',
+                magicType: 'explosive'
+            },
+            {
+                id: 'hermit',
+                name: 'Hermit',
+                weapon: 'Espada Mágica',
+                color: '#ffe600',
+                healDesc: 'Sem Cura Directa (Escudo)',
+                skillDesc: 'Magia de Eletricidade',
+                healType: 'shield',
+                magicType: 'lightning'
+            },
+            {
+                id: 'may',
+                name: 'May',
+                weapon: 'Agulhas Sombrias',
+                color: '#d800ff',
+                healDesc: 'Encanamento de Regeneração',
+                skillDesc: 'Eclipse e Invisibilidade',
+                healType: 'eclipse_regen',
+                magicType: 'invisibility'
+            },
+            {
+                id: 'butcher',
+                name: 'Butcher',
+                weapon: 'Machados de Açougueiro',
+                color: '#ff5722',
+                healDesc: 'Fresh Carcass',
+                skillDesc: 'Açougueiro & Terremoto',
+                healType: 'fresh_carcass',
+                magicType: 'earthquake'
+            },
+            {
+                id: 'tenebras',
+                name: 'Tenebras',
+                weapon: 'Cetro do Medo',
+                color: '#9c27b0',
+                healDesc: 'Intocável (Ataque Mágico)',
+                skillDesc: 'Raio do Medo (Fear Beam)',
+                healType: 'invincible_attack',
+                magicType: 'fear_beam'
+            }
+        ];
+
+        // Canvas Setup
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // Input Listener State
+        const keys = {};
+        window.addEventListener('keydown', (e) => {
+            audio.init();
+            keys[e.code] = true;
+        });
+        window.addEventListener('keyup', (e) => {
+            keys[e.code] = false;
+        });
+
+        // Touch Control Listeners
+        const touchBtns = {
+            'btn-left': false, 'btn-right': false, 'btn-up': false, 'btn-down': false,
+            'btn-punch': false, 'btn-kick': false, 'btn-skill': false, 'btn-magic': false
+        };
+
+        Object.keys(touchBtns).forEach(btnId => {
+            const el = document.getElementById(btnId);
+            if (el) {
+                el.addEventListener('touchstart', (e) => { e.preventDefault(); audio.init(); touchBtns[btnId] = true; });
+                el.addEventListener('touchend', (e) => { e.preventDefault(); touchBtns[btnId] = false; });
+            }
+        });
+
+        // Check Touch Device
+        if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
+            document.getElementById('touch-controls').classList.remove('hidden');
+        }
+
+        // Particles System
+        class Particle {
+            constructor(x, y, vx, vy, color, size, life) {
+                this.x = x;
+                this.y = y;
+                this.vx = vx;
+                this.vy = vy;
+                this.color = color;
+                this.size = size;
+                this.life = life;
+                this.maxLife = life;
+            }
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.life--;
+            }
+            draw(ctx) {
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, this.life / this.maxLife);
+                ctx.fillStyle = this.color;
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        let particles = [];
+        let screenShake = 0;
+
+        // Fighter Class
+        class Fighter {
+            constructor(x, character, isPlayer1, isAI = false) {
+                this.x = x;
+                this.y = canvas.height - 180;
+                this.char = character;
+                this.isP1 = isPlayer1;
+                this.isAI = isAI;
+
+                this.width = 60;
+                this.height = 120;
+                this.vx = 0;
+                this.vy = 0;
+                this.isJumping = false;
+                this.isBlocking = false;
+                this.facing = isPlayer1 ? 1 : -1;
+
+                this.health = 100;
+                this.maxHealth = 100;
+                this.energy = 100;
+                this.maxEnergy = 100;
+
+                this.state = 'idle'; // idle, attack, kick, skill, magic, hit
+                this.stateTimer = 0;
+                this.invisible = false;
+                this.invincible = false;
+                this.shielded = false;
+
+                // Cooldowns
+                this.skillCooldown = 0;
+                this.magicCooldown = 0;
+            }
+
+            update(opponent) {
+                // Gravity
+                this.vy += 0.8;
+                this.y += this.vy;
+
+                // Floor collision
+                const floorY = canvas.height - 140;
+                if (this.y >= floorY) {
+                    this.y = floorY;
+                    this.vy = 0;
+                    this.isJumping = false;
+                }
+
+                // Boundaries
+                if (this.x < 50) this.x = 50;
+                if (this.x > canvas.width - 50) this.x = canvas.width - 50;
+
+                // Face opponent
+                if (this.state === 'idle') {
+                    this.facing = this.x < opponent.x ? 1 : -1;
+                }
+
+                // Cooldown timers
+                if (this.skillCooldown > 0) this.skillCooldown--;
+                if (this.magicCooldown > 0) this.magicCooldown--;
+
+                // State timer
+                if (this.stateTimer > 0) {
+                    this.stateTimer--;
+                    if (this.stateTimer === 0) {
+                        this.state = 'idle';
+                        this.invincible = false;
+                        if (this.char.id === 'may') this.invisible = false;
+                    }
+                }
+
+                // Energy auto recovery
+                if (this.energy < this.maxEnergy) this.energy += 0.1;
+
+                // Handle AI or Input
+                if (this.isAI) {
+                    this.handleAI(opponent);
+                } else {
+                    this.handleInput(opponent);
+                }
+
+                this.x += this.vx;
+                this.vx *= 0.8;
+            }
+
+            handleInput(opponent) {
+                if (this.state !== 'idle') return;
+
+                if (this.isP1) {
+                    // P1 Key bindings
+                    if (keys['KeyA'] || touchBtns['btn-left']) this.vx = -5;
+                    if (keys['KeyD'] || touchBtns['btn-right']) this.vx = 5;
+                    if ((keys['KeyW'] || touchBtns['btn-up']) && !this.isJumping) {
+                        this.vy = -16;
+                        this.isJumping = true;
+                    }
+                    this.isBlocking = keys['KeyS'] || touchBtns['btn-down'];
+
+                    if (keys['KeyJ'] || touchBtns['btn-punch']) this.performAttack(opponent, 'punch');
+                    if (keys['KeyK'] || touchBtns['btn-kick']) this.performAttack(opponent, 'kick');
+                    if (keys['KeyL'] || touchBtns['btn-skill']) this.useSkill(opponent);
+                    if (keys['KeyU'] || touchBtns['btn-magic']) this.useMagic(opponent);
+                } else {
+                    // P2 Key bindings
+                    if (keys['ArrowLeft']) this.vx = -5;
+                    if (keys['ArrowRight']) this.vx = 5;
+                    if (keys['ArrowUp'] && !this.isJumping) {
+                        this.vy = -16;
+                        this.isJumping = true;
+                    }
+                    this.isBlocking = keys['ArrowDown'];
+
+                    if (keys['Numpad1']) this.performAttack(opponent, 'punch');
+                    if (keys['Numpad2']) this.performAttack(opponent, 'kick');
+                    if (keys['Numpad3']) this.useSkill(opponent);
+                    if (keys['Numpad4']) this.useMagic(opponent);
+                }
+            }
+
+            handleAI(opponent) {
+                if (this.state !== 'idle') return;
+
+                const dist = Math.abs(this.x - opponent.x);
+
+                // Movement logic
+                if (dist > 120) {
+                    this.vx = this.facing * 3.5;
+                } else if (dist < 60) {
+                    this.vx = -this.facing * 2;
+                }
+
+                // AI Action Selection
+                if (Math.random() < 0.03) {
+                    if (dist < 100) {
+                        const rand = Math.random();
+                        if (rand < 0.4) this.performAttack(opponent, 'punch');
+                        else if (rand < 0.7) this.performAttack(opponent, 'kick');
+                        else if (rand < 0.85 && this.skillCooldown === 0) this.useSkill(opponent);
+                        else if (this.magicCooldown === 0) this.useMagic(opponent);
+                    }
+                }
+            }
+
+            performAttack(opponent, type) {
+                this.state = type;
+                this.stateTimer = 20;
+                audio.playHit();
+
+                const reach = type === 'punch' ? 90 : 110;
+                const hitX = this.x + this.facing * reach;
+                const distToOpponent = Math.abs(hitX - opponent.x);
+
+                if (distToOpponent < 50 && Math.abs(this.y - opponent.y) < 60) {
+                    let dmg = type === 'punch' ? 8 : 12;
+                    opponent.takeDamage(dmg, this);
+                    
+                    // Particle effects on hit
+                    for (let i = 0; i < 12; i++) {
+                        particles.push(new Particle(
+                            opponent.x, opponent.y - 60,
+                            (Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8,
+                            this.char.color, Math.random() * 4 + 2, 20
+                        ));
+                    }
+                }
+            }
+
+            useSkill(opponent) {
+                if (this.skillCooldown > 0 || this.energy < 25) return;
+                this.energy -= 25;
+                this.skillCooldown = 180; // 3 sec
+                this.state = 'skill';
+                this.stateTimer = 30;
+
+                // Character specific healing/ability mechanic execution
+                switch (this.char.healType) {
+                    case 'regen': // Sombra
+                        this.health = Math.min(this.maxHealth, this.health + 20);
+                        audio.playHeal();
+                        break;
+                    case 'lifesteal': // Lynx
+                        audio.playHit();
+                        if (Math.abs(this.x - opponent.x) < 120) {
+                            opponent.takeDamage(15, this);
+                            this.health = Math.min(this.maxHealth, this.health + 15);
+                        }
+                        break;
+                    case 'shield': // Hermit
+                        this.shielded = true;
+                        audio.playMagic();
+                        setTimeout(() => this.shielded = false, 3000);
+                        break;
+                    case 'eclipse_regen': // May
+                        this.health = Math.min(this.maxHealth, this.health + 25);
+                        audio.playHeal();
+                        break;
+                    case 'fresh_carcass': // Butcher
+                        this.health = Math.min(this.maxHealth, this.health + 20);
+                        audio.playHeal();
+                        break;
+                    case 'invincible_attack': // Tenebras
+                        this.invincible = true;
+                        if (Math.abs(this.x - opponent.x) < 110) {
+                            opponent.takeDamage(18, this);
+                        }
+                        audio.playMagic();
+                        break;
+                }
+
+                // Visual aura burst
+                for (let i = 0; i < 25; i++) {
+                    particles.push(new Particle(
+                        this.x, this.y - 60,
+                        (Math.random() - 0.5) * 10, (Math.random() - 0.5) * 10,
+                        this.char.color, Math.random() * 6 + 2, 30
+                    ));
+                }
+            }
+
+            useMagic(opponent) {
+                if (this.magicCooldown > 0 || this.energy < 40) return;
+                this.energy -= 40;
+                this.magicCooldown = 240; // 4 sec
+                this.state = 'magic';
+                this.stateTimer = 40;
+
+                switch (this.char.magicType) {
+                    case 'fear_beam': // Tenebras Fear Beam
+                        audio.playMagic();
+                        screenShake = 15;
+                        if (Math.abs(this.y - opponent.y) < 80) {
+                            opponent.takeDamage(30, this);
+                        }
+                        break;
+                    case 'earthquake': // Butcher Earthquake
+                        audio.playEarthquake();
+                        screenShake = 25;
+                        opponent.takeDamage(22, this);
+                        break;
+                    case 'lightning': // Hermit Lightning
+                        audio.playMagic();
+                        opponent.takeDamage(25, this);
+                        break;
+                    case 'invisibility': // May Stealth
+                        this.invisible = true;
+                        audio.playMagic();
+                        break;
+                    default: // General Shadow Blast
+                        audio.playMagic();
+                        if (Math.abs(this.x - opponent.x) < 200) {
+                            opponent.takeDamage(25, this);
+                        }
+                        break;
+                }
+            }
+
+            takeDamage(amount, attacker) {
+                if (this.invincible) return;
+
+                if (this.isBlocking) {
+                    amount *= 0.3; // 70% damage reduction
+                } else if (this.shielded) {
+                    amount *= 0.2; // 80% shield reduction
+                }
+
+                this.health = Math.max(0, this.health - amount);
+                this.state = 'hit';
+                this.stateTimer = 12;
+
+                // Screen tremor on heavy hits
+                if (amount > 15) screenShake = 10;
+            }
+
+            draw(ctx) {
+                if (this.invisible) ctx.globalAlpha = 0.2;
+
+                ctx.save();
+                ctx.translate(this.x, this.y);
+
+                // Silhouette body drawing style matching Shadow Fight 2
+                ctx.fillStyle = '#0a0a0f'; // Dark shadowy silhouette
+                ctx.strokeStyle = this.char.color;
+                ctx.lineWidth = 3;
+
+                // Glowing eyes / weapon highlights
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = this.char.color;
+
+                // Body scale direction
+                ctx.scale(this.facing, 1);
+
+                // Animated stance base offsets
+                const bounce = Math.sin(Date.now() / 150) * 3;
+
+                // Draw Head & Glowing Eye Accent
+                ctx.beginPath();
+                ctx.arc(0, -110 + bounce, 14, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+
+                // Eye glow accent
+                ctx.fillStyle = this.char.color;
+                ctx.beginPath();
+                ctx.arc(5, -112 + bounce, 3, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Torso
+                ctx.fillStyle = '#0a0a0f';
+                ctx.beginPath();
+                ctx.moveTo(-12, -95 + bounce);
+                ctx.lineTo(12, -95 + bounce);
+                ctx.lineTo(8, -45);
+                ctx.lineTo(-8, -45);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+
+                // Legs
+                ctx.beginPath();
+                ctx.moveTo(-6, -45);
+                ctx.lineTo(-15, 0);
+                ctx.moveTo(6, -45);
+                ctx.lineTo(15, 0);
+                ctx.stroke();
+
+                // Arms & Weapons according to active state
+                ctx.beginPath();
+                if (this.state === 'punch') {
+                    ctx.moveTo(-5, -80);
+                    ctx.lineTo(40, -80); // Punch extending out
+                } else if (this.state === 'kick') {
+                    ctx.moveTo(-5, -45);
+                    ctx.lineTo(45, -30); // Kick extending out
+                } else {
+                    ctx.moveTo(-5, -80);
+                    ctx.lineTo(15, -60);
+                }
+                ctx.stroke();
+
+                // Unique Glowing Weapon Silhouette
+                ctx.strokeStyle = this.char.color;
+                ctx.lineWidth = 4;
+                ctx.beginPath();
+                if (this.state === 'punch') {
+                    ctx.moveTo(40, -80);
+                    ctx.lineTo(70, -85);
+                } else {
+                    ctx.moveTo(15, -60);
+                    ctx.lineTo(35, -80);
+                }
+                ctx.stroke();
+
+                ctx.restore();
+                ctx.globalAlpha = 1.0;
+            }
+        }
+
+        // Game Arena System & State
+        let player1, player2;
+        let gameMode = 'PVC'; // PVC or PVP
+        let selectedP1 = ROSTER[0];
+        let selectedP2 = ROSTER[1];
+        let gameActive = false;
+        let roundTime = 99;
+        let timerInterval;
+
+        // Populate Character Menu UI
+        const grid = document.getElementById('character-grid');
+        ROSTER.forEach((char, idx) => {
+            const card = document.createElement('div');
+            card.className = `p-3 rounded-xl border flex flex-col items-center justify-between cursor-pointer transition-all ${idx === 0 ? 'border-amber-400 bg-amber-500/10' : 'border-gray-800 bg-gray-900/40 hover:border-gray-600'}`;
+            card.innerHTML = `
+                <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-black text-sm mb-1" style="background:${char.color}">
+                    ${char.name[0]}
+                </div>
+                <span class="font-bold text-xs text-white">${char.name}</span>
+                <span class="text-[10px] text-gray-400 text-center mt-1">${char.healDesc}</span>
+            `;
+            card.onclick = () => {
+                document.querySelectorAll('#character-grid > div').forEach(c => c.classList.remove('border-amber-400', 'bg-amber-500/10'));
+                card.classList.add('border-amber-400', 'bg-amber-500/10');
+                selectedP1 = char;
+                // Auto pick different opponent for CPU
+                selectedP2 = ROSTER[(idx + 1) % ROSTER.length];
+            };
+            grid.appendChild(card);
+        });
+
+        // Toggle Game Modes
+        const modePvcBtn = document.getElementById('mode-pvc');
+        const modePvpBtn = document.getElementById('mode-pvp');
+
+        modePvcBtn.onclick = () => {
+            gameMode = 'PVC';
+            modePvcBtn.className = 'px-4 py-2 rounded-lg font-bold text-xs bg-amber-500 text-black shadow-lg shadow-amber-500/20 transition-all';
+            modePvpBtn.className = 'px-4 py-2 rounded-lg font-bold text-xs bg-gray-800 text-gray-400 hover:text-white transition-all';
+            document.getElementById('p2-type-tag').innerText = 'CPU';
+        };
+
+        modePvpBtn.onclick = () => {
+            gameMode = 'PVP';
+            modePvpBtn.className = 'px-4 py-2 rounded-lg font-bold text-xs bg-amber-500 text-black shadow-lg shadow-amber-500/20 transition-all';
+            modePvcBtn.className = 'px-4 py-2 rounded-lg font-bold text-xs bg-gray-800 text-gray-400 hover:text-white transition-all';
+            document.getElementById('p2-type-tag').innerText = 'P2';
+        };
+
+        // Start Game Event
+        document.getElementById('start-btn').onclick = () => {
+            document.getElementById('menu-screen').classList.add('hidden');
+            document.getElementById('game-ui').classList.remove('hidden');
+
+            // Setup players
+            player1 = new Fighter(canvas.width * 0.3, selectedP1, true, false);
+            player2 = new Fighter(canvas.width * 0.7, selectedP2, false, gameMode === 'PVC');
+
+            document.getElementById('p1-name').innerText = selectedP1.name.toUpperCase();
+            document.getElementById('p2-name').innerText = selectedP2.name.toUpperCase();
+
+            gameActive = true;
+            roundTime = 99;
+
+            // Timer Loop
+            clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                if (gameActive && roundTime > 0) {
+                    roundTime--;
+                    document.getElementById('timer').innerText = roundTime;
+                    if (roundTime === 0) checkWinner(true);
+                }
+            }, 1000);
+
+            showAnnouncer("FIGHT!", "A Batalha das Campeãs Começou!");
+        };
+
+        function showAnnouncer(mainText, subText = "") {
+            const el = document.getElementById('announcer');
+            document.getElementById('announcer-text').innerText = mainText;
+            document.getElementById('announcer-subtext').innerText = subText;
+            el.classList.remove('scale-0', 'opacity-0');
+            el.classList.add('scale-100', 'opacity-100');
+
+            setTimeout(() => {
+                el.classList.remove('scale-100', 'opacity-100');
+                el.classList.add('scale-0', 'opacity-0');
+            }, 2000);
+        }
+
+        function checkWinner(timeOut = false) {
+            if (!gameActive) return;
+
+            let winnerText = "";
+            if (player1.health <= 0 || (timeOut && player2.health > player1.health)) {
+                winnerText = `${player2.char.name} VENCEU!`;
+                gameActive = false;
+            } else if (player2.health <= 0 || (timeOut && player1.health > player2.health)) {
+                winnerText = `${player1.char.name} VENCEU!`;
+                gameActive = false;
+            }
+
+            if (!gameActive) {
+                showAnnouncer(winnerText, "Vitória no Campeonato Amanda & Stefany!");
+                setTimeout(() => {
+                    document.getElementById('menu-screen').classList.remove('hidden');
+                    document.getElementById('game-ui').classList.add('hidden');
+                }, 4000);
+            }
+        }
+
+        // Main Render Loop (60 FPS)
+        function render() {
+            // Apply Camera Screen Shake
+            ctx.save();
+            if (screenShake > 0) {
+                ctx.translate((Math.random() - 0.5) * screenShake, (Math.random() - 0.5) * screenShake);
+                screenShake *= 0.9;
+            }
+
+            // Draw Dark Asian Ring Background
+            ctx.fillStyle = '#05050a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Glowing Ring Floor
+            const floorY = canvas.height - 140;
+            const gradient = ctx.createLinearGradient(0, floorY, 0, canvas.height);
+            gradient.addColorStop(0, 'rgba(255, 215, 0, 0.2)');
+            gradient.addColorStop(1, 'rgba(5, 5, 10, 1)');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, floorY, canvas.width, canvas.height - floorY);
+
+            // Ring Boundary Lines
+            ctx.strokeStyle = '#ffd700';
+            ctx.lineWidth = 2;
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = '#ffd700';
+            ctx.beginPath();
+            ctx.moveTo(0, floorY);
+            ctx.lineTo(canvas.width, floorY);
+            ctx.stroke();
+
+            // Background Atmospheric Dojo Columns
+            ctx.fillStyle = 'rgba(20, 20, 35, 0.4)';
+            for (let i = 1; i < 5; i++) {
+                ctx.fillRect(i * (canvas.width / 5) - 15, 0, 30, floorY);
+            }
+
+            if (gameActive) {
+                // Update fighters
+                player1.update(player2);
+                player2.update(player1);
+
+                // Draw fighters
+                player1.draw(ctx);
+                player2.draw(ctx);
+
+                // Update particle engine
+                particles.forEach((p, idx) => {
+                    p.update();
+                    p.draw(ctx);
+                    if (p.life <= 0) particles.splice(idx, 1);
+                });
+
+                // Update UI health/energy bars
+                document.getElementById('p1-health').style.width = `${(player1.health / player1.maxHealth) * 100}%`;
+                document.getElementById('p1-health-val').innerText = `${Math.ceil(player1.health)} / 100`;
+                document.getElementById('p1-energy').style.width = `${(player1.energy / player1.maxEnergy) * 100}%`;
+
+                document.getElementById('p2-health').style.width = `${(player2.health / player2.maxHealth) * 100}%`;
+                document.getElementById('p2-health-val').innerText = `${Math.ceil(player2.health)} / 100`;
+                document.getElementById('p2-energy').style.width = `${(player2.energy / player2.maxEnergy) * 100}%`;
+
+                checkWinner();
+            }
+
+            ctx.restore();
+            requestAnimationFrame(render);
+        }
+
+        // Start Canvas Engine loop
+        window.onload = () => {
+            render();
+        };
+    </script>
+</body>
+</html>
